@@ -9,30 +9,49 @@
 import { useState, useEffect } from 'react'
 
 export function useWorkflows() {
-  // BUG (T-04): loading starts as false — UI renders before data arrives.
-  // Should be: const [loading, setLoading] = useState(true)
-  const [loading, setLoading] = useState(false)
+  // T-04: loading starts as true — show loading state until data arrives
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
 
   useEffect(() => {
-    // BUG (T-04): no try/catch, no .catch() — network errors are swallowed.
-    // BUG (T-04b): Effect has no dependency array or changing deps — runs infinitely
-    try{
-      setLoading(true)
-      fetch('/data.json')
-      .then(res => res.json())
-      .then(json => {
-        setData(json)
-        })
-    }catch(err){
-      console.err(err.message)
-    }finally{
-      setLoading(false)
+    // T-04: Properly handle loading state throughout the fetch lifecycle
+    let isMounted = true // prevent state updates after unmount
+
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Simulate network delay to view loading screen
+        // await new Promise(resolve => setTimeout(resolve, 3000))
+        
+        const response = await fetch('/data.json')
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const json = await response.json()
+        
+        if (isMounted) {
+          setData(json)
+          setLoading(false)
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error loading workflows:', err.message)
+          setError(err)
+          setLoading(false)
+        }
+      }
     }
-        // BUG (T-04): setLoading(false) never called because loading never
-        // set to true. Candidate needs to wire the full loading lifecycle.
-    // Missing: .catch(err => setError(err))
+
+    fetchData()
+
+    // Cleanup: prevent state updates if component unmounts
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   return { data, loading, error }

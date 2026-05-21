@@ -20,6 +20,7 @@
 //     Calling .map() on null throws. Candidate must guard: tags ?? []
 
 import React from 'react'
+import StatusBadge from './StatusBadge'
 
 // Inline status colour map — copy-pasted in 5 places.
 // T-07: extract this into a StatusBadge component.
@@ -66,11 +67,8 @@ export default function WorkflowCard({ workflow, isSelected, onClick }) {
       {/* Header row: ID + status badge (copy-pasted status logic — T-07) */}
       <div className="card-header">
         <span className="card-id">{workflow.id}</span>
-        {/* Inline status — T-07: this exact block is duplicated 4 more times */}
-        <span className="status-label" style={{ color: colour }}>
-          <span className="status-dot" style={{ background: colour }} />
-          {workflow.status ?? 'unknown'}
-        </span>
+        {/* T-07: now using StatusBadge component */}
+        <StatusBadge status={workflow.status} />
       </div>
 
       {/* Title + client */}

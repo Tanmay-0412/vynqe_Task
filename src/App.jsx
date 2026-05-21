@@ -118,16 +118,20 @@ import ActionBar from './components/ActionBar'
 // ]
 
 export default function App() {
+  // All hooks MUST be called at the top, before any early returns
   const { data, loading, error } = useWorkflows()
 
   const [activeFilter, setActiveFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedWorkflow, setSelectedWorkflow] = useState(null)
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryText, setSummaryText] = useState('')
+  const [summaryLoading, setSummaryLoading] = useState(false)
 
   // T-04: No loading or error UI. App just renders with empty/null state.
   // Fix: add early returns here:
-    if (loading) return <div className="state-fullscreen">Loading...</div>
-    if (error)   return <div className="state-fullscreen">Error: {error.message}</div>
+  if (loading) return <div className="state-fullscreen">Loading...</div>
+  if (error)   return <div className="state-fullscreen">Error: {error.message}</div>
 
   // T-02: `data` is loaded but not used — grid uses HARDCODED_CARDS.
   // Fix: replace HARDCODED_CARDS with filtered data?.workflows
@@ -155,9 +159,80 @@ export default function App() {
   // const displayedWorkflows = HARDCODED_CARDS
 
   function handleSummarise() {
-    // T-09: Mock AI summary. Wire this up.
-    // Candidate can use the Anthropic API, a mocked response, or anything creative.
-    alert('T-09: Build the AI summary here.')
+    // T-09: Generate a summary of today's workflows
+    setSummaryLoading(true)
+    setSummaryText('')
+    
+    // Simulate API delay (500ms)
+    setTimeout(() => {
+      const summary = generateWorkflowSummary(displayedWorkflows, data?.users)
+      setSummaryText(summary)
+      setSummaryLoading(false)
+      setShowSummary(true)
+    }, 500)
+  }
+
+  function generateWorkflowSummary(workflows, users) {
+    // T-09: Generate a summary from displayed workflows
+    if (!workflows || workflows.length === 0) {
+      return 'No workflows to summarize.'
+    }
+
+    const stats = {
+      active: workflows.filter(w => w.status?.toLowerCase() === 'active').length,
+      blocked: workflows.filter(w => w.status?.toLowerCase() === 'blocked').length,
+      review: workflows.filter(w => w.status?.toLowerCase() === 'review').length,
+      completed: workflows.filter(w => w.status?.toLowerCase() === 'completed').length,
+      total: workflows.length,
+    }
+
+    // Calculate progress
+    const avgProgress = Math.round(
+      workflows.reduce((sum, w) => sum + (Number(w.progress) || 0), 0) / workflows.length
+    )
+
+    // Find high-priority items
+    const highPriority = workflows.filter(w => w.priority === 1)
+    const blocked = workflows.filter(w => w.status?.toLowerCase() === 'blocked')
+
+    // Generate summary text
+    let summary = `📊 Workflow Summary\n\n`
+    summary += `Total Workflows: ${stats.total}\n`
+    summary += `  • Active: ${stats.active}\n`
+    summary += `  • Review: ${stats.review}\n`
+    summary += `  • Blocked: ${stats.blocked}\n`
+    summary += `  • Completed: ${stats.completed}\n\n`
+    
+    summary += `Average Progress: ${avgProgress}%\n\n`
+
+    if (highPriority.length > 0) {
+      summary += `🔴 High Priority Items (${highPriority.length}):\n`
+      highPriority.slice(0, 3).forEach(w => {
+        summary += `  • ${w.title} - ${w.client_name}\n`
+      })
+      summary += '\n'
+    }
+
+    if (blocked.length > 0) {
+      summary += `⚠️  Blocked Items (${blocked.length}):\n`
+      blocked.slice(0, 3).forEach(w => {
+        summary += `  • ${w.title} - ${w.notes || 'No notes'}\n`
+      })
+      summary += '\n'
+    }
+
+    summary += `✅ Recommended Actions:\n`
+    if (stats.blocked > 0) {
+      summary += `  • Resolve ${stats.blocked} blocked item(s)\n`
+    }
+    if (highPriority.length > 0) {
+      summary += `  • Focus on ${highPriority.length} high-priority workflow(s)\n`
+    }
+    if (stats.review > 0) {
+      summary += `  • Review ${stats.review} workflow(s) in review state\n`
+    }
+
+    return summary
   }
 
   return (
@@ -171,7 +246,7 @@ export default function App() {
 
         {/* Inline status count — T-07: 5th place status logic appears */}
         <div style={{ display: 'flex', gap: '16px', marginLeft: '24px' }}>
-          {['active', 'blocked', 'review'].map(s => {
+          {['active', 'blocked', 'review','completed'].map(s => {
             const colours = {
               active:  'var(--status-active)',
               blocked: 'var(--status-blocked)',
@@ -243,6 +318,97 @@ export default function App() {
 
       {/* T-08: Action bar with suggested actions */}
       <ActionBar workflow={selectedWorkflow} />
+
+      {/* T-09: Summary modal */}
+      {showSummary && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto',
+            padding: '24px',
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+            }}>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Workflow Summary
+              </div>
+              <button
+                onClick={() => setShowSummary(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '24px',
+                  lineHeight: 1,
+                  padding: '0',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {summaryLoading ? (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
+                Generating summary...
+              </div>
+            ) : (
+              <div style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                color: 'var(--text-primary)',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: 'var(--bg-elevated)',
+                padding: '12px',
+                borderRadius: '4px',
+                border: '1px solid var(--border)',
+              }}>
+                {summaryText}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowSummary(false)}
+              style={{
+                marginTop: '16px',
+                width: '100%',
+                padding: '8px',
+                background: 'var(--status-active)',
+                color: 'var(--bg-base)',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontSize: '12px',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
