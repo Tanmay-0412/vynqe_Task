@@ -28,9 +28,7 @@ import FilterBar from './components/FilterBar'
 import WorkflowCard from './components/WorkflowCard'
 import DetailPanel from './components/DetailPanel'
 import ActivityFeed from './components/ActivityFeed'
-
-// TODO: T-08
-// import ActionBar from './components/ActionBar'
+import ActionBar from './components/ActionBar'
 
 // T-02: These hardcoded cards are what the grid renders.
 // They're here so the UI looks populated on first load.
@@ -128,8 +126,8 @@ export default function App() {
 
   // T-04: No loading or error UI. App just renders with empty/null state.
   // Fix: add early returns here:
-  //   if (loading) return <div className="state-fullscreen">Loading...</div>
-  //   if (error)   return <div className="state-fullscreen">Error: {error.message}</div>
+    if (loading) return <div className="state-fullscreen">Loading...</div>
+    if (error)   return <div className="state-fullscreen">Error: {error.message}</div>
 
   // T-02: `data` is loaded but not used — grid uses HARDCODED_CARDS.
   // Fix: replace HARDCODED_CARDS with filtered data?.workflows
@@ -178,6 +176,7 @@ export default function App() {
               active:  'var(--status-active)',
               blocked: 'var(--status-blocked)',
               review:  'var(--status-review)',
+              completed:  'var(--status-completed)',
             }
             // Uses hardcoded cards so count is always wrong until T-02 is fixed
             const count = displayedWorkflows.filter(
@@ -242,8 +241,8 @@ export default function App() {
         />
       </div>
 
-      {/* TODO: T-08 */}
-      {/* <ActionBar workflow={selectedWorkflow} /> */}
+      {/* T-08: Action bar with suggested actions */}
+      <ActionBar workflow={selectedWorkflow} />
     </div>
   )
 }
